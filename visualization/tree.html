@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spider – Entscheidungsbaum</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      overflow: hidden;
+    }
+
+    /* ── Header ────────────────────────────────────────────────── */
+    #header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(15,17,23,0.95);
+      border-bottom: 1px solid #2d3748;
+      padding: 10px 20px;
+      display: flex; align-items: center; gap: 20px;
+    }
+    #header h1 { font-size: 18px; font-weight: 700; color: #63b3ed; letter-spacing: 2px; }
+    #header .subtitle { font-size: 12px; color: #718096; }
+
+    #stats {
+      margin-left: auto;
+      display: flex; gap: 16px; align-items: center;
+    }
+    .stat-item { text-align: center; }
+    .stat-value { font-size: 18px; font-weight: 700; color: #63b3ed; }
+    .stat-label { font-size: 10px; color: #718096; text-transform: uppercase; }
+
+    /* Fortschrittsbalken gesamt */
+    #progress-bar-container {
+      width: 140px;
+      background: #2d3748;
+      border-radius: 4px;
+      height: 6px;
+      overflow: hidden;
+    }
+    #progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #48bb78, #63b3ed);
+      transition: width 0.5s ease;
+      border-radius: 4px;
+    }
+
+    /* ── SVG Canvas ─────────────────────────────────────────────── */
+    #canvas {
+      position: fixed; top: 50px; left: 0; right: 0; bottom: 0;
+    }
+    svg { width: 100%; height: 100%; }
+
+    /* ── Links ──────────────────────────────────────────────────── */
+    .link-active {
+      stroke: #4299e1;
+      stroke-width: 2;
+      stroke-opacity: 0.8;
+      fill: none;
+    }
+    .link-inactive {
+      stroke: #2d3748;
+      stroke-width: 1;
+      stroke-opacity: 0.4;
+      fill: none;
+      stroke-dasharray: 4 3;
+    }
+
+    /* ── Nodes ──────────────────────────────────────────────────── */
+    .node circle {
+      stroke-width: 2;
+      cursor: pointer;
+      transition: filter 0.15s;
+    }
+    .node circle:hover { filter: brightness(1.4) drop-shadow(0 0 8px currentColor); }
+    .node text {
+      pointer-events: none;
+      user-select: none;
+      font-size: 11px;
+    }
+
+    /* Status-Farben */
+    .status-accepted  { fill: #48bb78; stroke: #38a169; }
+    .status-rejected  { fill: #2d3748; stroke: #4a5568; opacity: 0.5; }
+    .status-open      { fill: #4299e1; stroke: #3182ce; }
+    .status-in_progress { fill: #ed8936; stroke: #dd6b20; }
+
+    /* reifegrad-Ring */
+    .reifegrad-ring {
+      fill: none;
+      stroke-width: 3;
+      stroke-linecap: round;
+    }
+    .reifegrad-ring-bg { stroke: #2d3748; }
+    .reifegrad-ring-fg { stroke: #48bb78; }
+
+    /* ── Tooltip ────────────────────────────────────────────────── */
+    #tooltip {
+      position: fixed;
+      background: rgba(13, 17, 26, 0.97);
+      border: 1px solid #4299e1;
+      border-radius: 8px;
+      padding: 14px 16px;
+      pointer-events: none;
+      max-width: 340px;
+      font-size: 12px;
+      line-height: 1.6;
+      z-index: 200;
+      display: none;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    #tooltip .tt-title {
+      font-size: 14px; font-weight: 700; color: #63b3ed; margin-bottom: 8px;
+      border-bottom: 1px solid #2d3748; padding-bottom: 6px;
+    }
+    #tooltip .tt-row { display: flex; gap: 8px; margin-bottom: 3px; }
+    #tooltip .tt-key { color: #718096; min-width: 100px; font-size: 11px; }
+    #tooltip .tt-val { color: #e2e8f0; }
+    #tooltip .tt-badge {
+      display: inline-block;
+      padding: 1px 7px; border-radius: 10px; font-size: 10px; font-weight: 600;
+    }
+    .badge-accepted   { background: #276749; color: #9ae6b4; }
+    .badge-rejected   { background: #4a5568; color: #a0aec0; }
+    .badge-open       { background: #2b4c7e; color: #90cdf4; }
+    .badge-in_progress{ background: #744210; color: #fbd38d; }
+
+    .tt-progress-bg {
+      background: #2d3748; border-radius: 4px; height: 6px;
+      width: 100%; overflow: hidden; margin-top: 2px;
+    }
+    .tt-progress-fill {
+      height: 100%; border-radius: 4px;
+      background: linear-gradient(90deg, #48bb78, #63b3ed);
+    }
+
+    #tooltip .tt-reasoning {
+      margin-top: 8px; padding-top: 8px;
+      border-top: 1px solid #2d3748;
+      color: #a0aec0; font-size: 11px; font-style: italic;
+      max-height: 80px; overflow-y: auto;
+    }
+
+    /* ── Controls ───────────────────────────────────────────────── */
+    #controls {
+      position: fixed; bottom: 20px; right: 20px; z-index: 100;
+      display: flex; gap: 8px;
+    }
+    .ctrl-btn {
+      background: #2d3748; border: 1px solid #4a5568; color: #e2e8f0;
+      padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 12px;
+      transition: background 0.15s;
+    }
+    .ctrl-btn:hover { background: #4a5568; }
+
+    #legend {
+      position: fixed; bottom: 20px; left: 20px; z-index: 100;
+      background: rgba(15,17,23,0.9); border: 1px solid #2d3748;
+      border-radius: 8px; padding: 12px 16px; font-size: 11px;
+    }
+    #legend .leg-title { color: #718096; margin-bottom: 6px; text-transform: uppercase; font-size: 10px; }
+    .leg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .leg-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+
+    #loading {
+      position: fixed; inset: 0; background: #0f1117;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; color: #63b3ed; z-index: 999;
+    }
+  </style>
+</head>
+<body>
+
+<div id="loading">⟳ Lade Spider-Daten…</div>
+
+<!-- Header -->
+<div id="header">
+  <h1>🕷 SPIDER</h1>
+  <span class="subtitle">AI Traceability Framework – Entscheidungsbaum</span>
+  <div id="stats">
+    <div class="stat-item">
+      <div class="stat-value" id="stat-total">–</div>
+      <div class="stat-label">Knoten</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" id="stat-accepted" style="color:#48bb78">–</div>
+      <div class="stat-label">Akzeptiert</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" id="stat-rejected" style="color:#718096">–</div>
+      <div class="stat-label">Abgelehnt</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" id="stat-open" style="color:#4299e1">–</div>
+      <div class="stat-label">Offen</div>
+    </div>
+    <div style="margin-left: 8px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:3px;">
+        <span style="font-size:10px;color:#718096;">REIFEGRAD</span>
+        <span id="stat-reifegrad" style="font-size:11px; font-weight:700; color:#48bb78;">0%</span>
+      </div>
+      <div id="progress-bar-container">
+        <div id="progress-bar" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Visualisierung -->
+<div id="canvas">
+  <svg id="tree-svg">
+    <g id="zoom-group">
+      <g id="links-layer"></g>
+      <g id="nodes-layer"></g>
+    </g>
+  </svg>
+</div>
+
+<!-- Tooltip -->
+<div id="tooltip"></div>
+
+<!-- Legende -->
+<div id="legend">
+  <div class="leg-title">Status</div>
+  <div class="leg-row"><div class="leg-dot" style="background:#48bb78"></div> Akzeptiert</div>
+  <div class="leg-row"><div class="leg-dot" style="background:#ed8936"></div> In Bearbeitung</div>
+  <div class="leg-row"><div class="leg-dot" style="background:#4299e1"></div> Offen</div>
+  <div class="leg-row"><div class="leg-dot" style="background:#4a5568;opacity:0.5"></div> Abgelehnt</div>
+  <div style="margin-top:8px; border-top:1px solid #2d3748; padding-top:8px;">
+    <div class="leg-title">Interaktion</div>
+    <div style="color:#718096; font-size:10px; line-height:1.8;">
+      🖱 Ziehen = Verschieben<br>
+      🔍 Mausrad = Zoomen<br>
+      👆 Hover = Details
+    </div>
+  </div>
+</div>
+
+<!-- Controls -->
+<div id="controls">
+  <button class="ctrl-btn" onclick="resetZoom()">⊙ Zurücksetzen</button>
+  <button class="ctrl-btn" onclick="toggleInactive()">👁 Inaktive</button>
+  <button class="ctrl-btn" onclick="location.reload()">↻ Neu laden</button>
+</div>
+
+<script>
+// ============================================================
+// Konfiguration
+// ============================================================
+const API_URL = '/api/tree';
+const NODE_R  = 20;       // Basis-Radius
+const H_GAP   = 220;      // Horizontaler Abstand zwischen Ebenen
+const V_GAP   = 70;       // Vertikaler Abstand zwischen Knoten
+
+let showInactive = true;
+let allNodes = [];
+let rootTransform = null;
+
+// ============================================================
+// Daten laden
+// ============================================================
+async function loadData() {
+  try {
+    const resp = await fetch(API_URL);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    allNodes = await resp.json();
+    document.getElementById('loading').style.display = 'none';
+    render(allNodes);
+  } catch (e) {
+    document.getElementById('loading').textContent = `Fehler: ${e.message}. Starte: python -m spider.visualization.serve`;
+  }
+}
+
+// ============================================================
+// Baumstruktur aufbauen
+// ============================================================
+function buildHierarchy(nodes, showInact) {
+  const filtered = showInact ? nodes : nodes.filter(n => n.active);
+  const map = {};
+  filtered.forEach(n => { map[n.id] = { ...n, children: [] }; });
+
+  const roots = [];
+  filtered.forEach(n => {
+    if (n.parentId && map[n.parentId]) {
+      map[n.parentId].children.push(map[n.id]);
+    } else if (!n.parentId) {
+      roots.push(map[n.id]);
+    }
+  });
+
+  if (roots.length === 0) return null;
+  if (roots.length === 1) return roots[0];
+  return { id: '__root__', name: 'Spider', active: true, status: 'in_progress',
+           confidence: 0, reifegrad: 0, children: roots, _synthetic: true };
+}
+
+// ============================================================
+// Render
+// ============================================================
+function render(nodes) {
+  updateStats(nodes);
+  const root = buildHierarchy(nodes, showInactive);
+  if (!root) return;
+
+  const svg   = d3.select('#tree-svg');
+  const zg    = d3.select('#zoom-group');
+  const links = d3.select('#links-layer');
+  const nodesG= d3.select('#nodes-layer');
+  links.selectAll('*').remove();
+  nodesG.selectAll('*').remove();
+
+  // D3 Hierarchy
+  const hierarchy = d3.hierarchy(root, d => d.children && d.children.length ? d.children : null);
+  const treeLayout = d3.tree().nodeSize([V_GAP, H_GAP]);
+  treeLayout(hierarchy);
+
+  const allDesc = hierarchy.descendants();
+  const allLinks = hierarchy.links();
+
+  // ── Links ───────────────────────────────────────────────────
+  links.selectAll('path')
+    .data(allLinks)
+    .join('path')
+    .attr('class', d => d.target.data.active ? 'link-active' : 'link-inactive')
+    .attr('d', d3.linkHorizontal()
+      .x(d => d.y)
+      .y(d => d.x)
+    );
+
+  // ── Nodes ───────────────────────────────────────────────────
+  const nodeGroups = nodesG.selectAll('g.node')
+    .data(allDesc)
+    .join('g')
+    .attr('class', 'node')
+    .attr('transform', d => `translate(${d.y},${d.x})`);
+
+  // Ring-Hintergrund (reifegrad)
+  nodeGroups.append('circle')
+    .attr('r', NODE_R + 4)
+    .attr('class', 'reifegrad-ring reifegrad-ring-bg');
+
+  // Ring-Vordergrund (reifegrad als Arc)
+  nodeGroups.each(function(d) {
+    const rg = d.data.reifegrad || 0;
+    if (rg <= 0 || d.data._synthetic) return;
+    const r = NODE_R + 4;
+    const circ = 2 * Math.PI * r;
+    const dashArr = (rg * circ) + ' ' + circ;
+    const startAngle = -Math.PI / 2;
+    const cx = 0, cy = 0;
+    // SVG arc für den Reifegrad
+    d3.select(this).append('circle')
+      .attr('r', r)
+      .attr('class', 'reifegrad-ring reifegrad-ring-fg')
+      .attr('stroke-dasharray', dashArr)
+      .attr('stroke-dashoffset', 0)
+      .attr('transform', `rotate(-90)`);
+  });
+
+  // Haupt-Kreis
+  nodeGroups.append('circle')
+    .attr('r', NODE_R)
+    .attr('class', d => `status-${d.data.status || 'open'}`)
+    .on('mouseover', showTooltip)
+    .on('mousemove', moveTooltip)
+    .on('mouseout',  hideTooltip);
+
+  // Konfidenz-Text im Kreis
+  nodeGroups.append('text')
+    .attr('dy', '0.35em')
+    .attr('text-anchor', 'middle')
+    .attr('fill', d => d.data.active ? '#fff' : '#718096')
+    .attr('font-size', '9px')
+    .attr('font-weight', '700')
+    .text(d => d.data._synthetic ? '' : Math.round((d.data.confidence || 0) * 100) + '%')
+    .style('pointer-events', 'none');
+
+  // Knoten-Name
+  nodeGroups.append('text')
+    .attr('dy', d => d.children ? -NODE_R - 8 : NODE_R + 14)
+    .attr('text-anchor', 'middle')
+    .attr('fill', d => d.data.active ? '#e2e8f0' : '#4a5568')
+    .attr('font-size', '11px')
+    .attr('font-weight', d => d.data.status === 'accepted' ? '600' : '400')
+    .text(d => {
+      const name = d.data.name || d.data.id;
+      return name.length > 28 ? name.substring(0, 26) + '…' : name;
+    })
+    .style('pointer-events', 'none');
+
+  // ── Zoom & Pan ───────────────────────────────────────────────
+  const zoom = d3.zoom()
+    .scaleExtent([0.1, 4])
+    .on('zoom', (event) => {
+      zg.attr('transform', event.transform);
+      rootTransform = event.transform;
+    });
+
+  svg.call(zoom);
+
+  // Initial zentrieren
+  const svgEl   = document.getElementById('tree-svg');
+  const W = svgEl.clientWidth, H = svgEl.clientHeight;
+  const xs = allDesc.map(d => d.y), ys = allDesc.map(d => d.x);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const treeW = maxX - minX + NODE_R * 4;
+  const treeH = maxY - minY + NODE_R * 4;
+  const scale = Math.min(0.85, W / treeW, H / treeH);
+  const tx = W / 2 - scale * (minX + treeW / 2);
+  const ty = H / 2 - scale * (minY + treeH / 2);
+
+  const t = d3.zoomIdentity.translate(tx, ty).scale(scale);
+  svg.call(zoom.transform, t);
+  rootTransform = t;
+}
+
+// ============================================================
+// Stats
+// ============================================================
+function updateStats(nodes) {
+  const total    = nodes.length;
+  const accepted = nodes.filter(n => n.status === 'accepted').length;
+  const rejected = nodes.filter(n => n.status === 'rejected').length;
+  const open     = nodes.filter(n => n.status === 'open').length;
+  const roots    = nodes.filter(n => !n.parentId);
+  const rg       = roots.length ? (roots[0].reifegrad || 0) : 0;
+
+  document.getElementById('stat-total').textContent    = total;
+  document.getElementById('stat-accepted').textContent = accepted;
+  document.getElementById('stat-rejected').textContent = rejected;
+  document.getElementById('stat-open').textContent     = open;
+  document.getElementById('stat-reifegrad').textContent= Math.round(rg * 100) + '%';
+  document.getElementById('progress-bar').style.width  = (rg * 100) + '%';
+}
+
+// ============================================================
+// Tooltip
+// ============================================================
+const tooltip = document.getElementById('tooltip');
+
+function fmtDate(ms) {
+  if (!ms) return '–';
+  return new Date(ms).toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function badgeHtml(status) {
+  const cls = `badge-${status}`;
+  const labels = { accepted: 'Akzeptiert', rejected: 'Abgelehnt', open: 'Offen', in_progress: 'In Bearbeitung' };
+  return `<span class="tt-badge ${cls}">${labels[status] || status}</span>`;
+}
+
+function progressHtml(val, label) {
+  const pct = Math.round((val || 0) * 100);
+  return `
+    <div class="tt-row">
+      <span class="tt-key">${label}</span>
+      <div style="flex:1">
+        <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+          <span class="tt-val">${pct}%</span>
+        </div>
+        <div class="tt-progress-bg">
+          <div class="tt-progress-fill" style="width:${pct}%"></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function showTooltip(event, d) {
+  const n = d.data;
+  if (n._synthetic) return;
+
+  tooltip.innerHTML = `
+    <div class="tt-title">${n.name || n.id}</div>
+    <div class="tt-row"><span class="tt-key">Status</span><span class="tt-val">${badgeHtml(n.status)}</span></div>
+    <div class="tt-row"><span class="tt-key">Issuer</span><span class="tt-val">${n.issuer || '–'}</span></div>
+    ${progressHtml(n.reifegrad,   'Reifegrad')}
+    ${progressHtml(n.confidence,  'Confidence')}
+    <div class="tt-row"><span class="tt-key">Erstellt</span><span class="tt-val">${fmtDate(n.creationDate)}</span></div>
+    ${n.acceptionDate  ? `<div class="tt-row"><span class="tt-key">Akzeptiert</span><span class="tt-val">${fmtDate(n.acceptionDate)}</span></div>` : ''}
+    ${n.rejectionDate  ? `<div class="tt-row"><span class="tt-key">Abgelehnt</span><span class="tt-val">${fmtDate(n.rejectionDate)}</span></div>` : ''}
+    ${n.rejectionReason? `<div class="tt-row"><span class="tt-key">Abl.-Grund</span><span class="tt-val" style="color:#fc8181">${n.rejectionReason}</span></div>` : ''}
+    ${n.acceptionReason? `<div class="tt-row"><span class="tt-key">Akz.-Grund</span><span class="tt-val" style="color:#9ae6b4">${n.acceptionReason}</span></div>` : ''}
+    ${n.synonyms       ? `<div class="tt-row"><span class="tt-key">Synonyme</span><span class="tt-val" style="color:#718096">${n.synonyms}</span></div>` : ''}
+    ${n.summary        ? `<div class="tt-reasoning">${n.summary}</div>` : ''}
+    ${n.reasoning      ? `<div class="tt-reasoning" style="color:#718096">${n.reasoning}</div>` : ''}
+  `;
+  tooltip.style.display = 'block';
+  moveTooltip(event);
+}
+
+function moveTooltip(event) {
+  const x = event.clientX + 16;
+  const y = event.clientY + 16;
+  const tw = tooltip.offsetWidth;
+  const th = tooltip.offsetHeight;
+  tooltip.style.left = (x + tw > window.innerWidth  ? x - tw - 32 : x) + 'px';
+  tooltip.style.top  = (y + th > window.innerHeight ? y - th - 32 : y) + 'px';
+}
+
+function hideTooltip() { tooltip.style.display = 'none'; }
+
+// ============================================================
+// Controls
+// ============================================================
+function resetZoom() {
+  const svg = d3.select('#tree-svg');
+  svg.transition().duration(500).call(
+    d3.zoom().transform,
+    d3.zoomIdentity
+  );
+  render(allNodes); // neu rendern mit neuem Zoom
+}
+
+function toggleInactive() {
+  showInactive = !showInactive;
+  render(allNodes);
+}
+
+// ============================================================
+// Auto-Refresh alle 5 Sekunden
+// ============================================================
+async function refresh() {
+  try {
+    const resp = await fetch(API_URL);
+    if (!resp.ok) return;
+    const nodes = await resp.json();
+    allNodes = nodes;
+    render(nodes);
+  } catch {}
+}
+
+// ============================================================
+// Start
+// ============================================================
+loadData();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>
+
