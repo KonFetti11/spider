@@ -19,7 +19,7 @@ from typing import Optional, List
 from spider.db.models import Node, Action, now_ms
 
 # Standard-Datenbankpfad (kann per Umgebungsvariable überschrieben werden)
-DEFAULT_DB_PATH = Path(__file__).parent.parent / "data" / "spider.db"
+DEFAULT_DB_PATH = Path(__file__).parent.parent / ".spider" / "spider.db"
 
 
 # ---------------------------------------------------------------------------

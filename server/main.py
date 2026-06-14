@@ -37,7 +37,8 @@ LOG_LEVEL = os.environ.get("SPIDER_LOG_LEVEL", "info")
 def main():
     print(f"Spider API Server startet auf http://{HOST}:{PORT}")
     print(f"Dokumentation: http://{HOST}:{PORT}/docs")
-    print(f"Datenbank: {os.environ.get('SPIDER_DB_PATH', 'data/spider.db')}")
+    p = os.environ.get('SPIDER_DB_PATH', 'data/spider.db')
+    print(f"Datenbank: {p}")
     uvicorn.run(
         "spider.server.api:app",
         host=HOST,

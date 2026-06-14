@@ -16,8 +16,8 @@ from pathlib import Path
 # Projektwurzel im Suchpfad
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from spider.db.database import Database, DEFAULT_DB_PATH
-from spider.db.models import Node, Action, now_ms
+from db.database import Database, DEFAULT_DB_PATH
+from db.models import Node, Action
 
 
 def _id() -> str:
