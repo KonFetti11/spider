@@ -414,9 +414,13 @@ function render(nodes) {
   const tx = W / 2 - scale * (minX + treeW / 2);
   const ty = H / 2 - scale * (minY + treeH / 2);
 
-  const t = d3.zoomIdentity.translate(tx, ty).scale(scale);
-  svg.call(zoom.transform, t);
-  rootTransform = t;
+  if (rootTransform) {
+    svg.call(zoom.transform, rootTransform);
+  } else {
+    const t = d3.zoomIdentity.translate(tx, ty).scale(scale);
+    svg.call(zoom.transform, t);
+    rootTransform = t;
+  }
 }
 
 // ============================================================
@@ -508,12 +512,8 @@ function hideTooltip() { tooltip.style.display = 'none'; }
 // Controls
 // ============================================================
 function resetZoom() {
-  const svg = d3.select('#tree-svg');
-  svg.transition().duration(500).call(
-    d3.zoom().transform,
-    d3.zoomIdentity
-  );
-  render(allNodes); // neu rendern mit neuem Zoom
+  rootTransform = null;
+  render(allNodes);
 }
 
 function toggleInactive() {
