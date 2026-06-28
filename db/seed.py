@@ -16,8 +16,8 @@ from pathlib import Path
 # Projektwurzel im Suchpfad
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from db.database import Database, DEFAULT_DB_PATH
-from db.models import Node, Action
+from spider.db.database import Database, DEFAULT_DB_PATH
+from spider.db.models import Node, Action
 
 
 def _id() -> str:
@@ -370,6 +370,10 @@ def seed(db: Database):
 
 if __name__ == "__main__":
     import os
+
+    # Projekt-.env laden, damit der Seed in die Projekt-DB schreibt (SPIDER_DB_PATH).
+    from spider.config import load_project_env
+    load_project_env()
 
     db_path = os.environ.get("SPIDER_DB_PATH", str(DEFAULT_DB_PATH))
     print(f"Datenbank: {db_path}")

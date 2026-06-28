@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spider"
+version = "0.1.0"
+description = "POC-Framework zur Nachvollziehbarkeit von AI-Agent-Entscheidungen (Planungsbaum + Audit-Log)."
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.29.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+# Für den nativen MCP-Server (Claude Code & andere MCP-Clients): pip install -e ".[mcp]"
+mcp = ["mcp>=1.2.0"]
+
+[project.scripts]
+spider-init = "spider.init:main"
+
+# Das Repository-Wurzelverzeichnis IST selbst das Package `spider`.
+# Daher wird `spider` explizit auf "." gemappt; Subpackages liegen darunter.
+[tool.setuptools]
+packages = [
+    "spider",
+    "spider.db",
+    "spider.server",
+    "spider.tools",
+    "spider.visualization",
+]
+
+[tool.setuptools.package-dir]
+spider = "."
+
+[tool.setuptools.package-data]
+spider = ["templates/*.md", "templates/commands/*.md", "visualization/*.html"]

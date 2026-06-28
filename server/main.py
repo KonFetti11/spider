@@ -19,11 +19,10 @@ from pathlib import Path
 # Projektwurzel im Suchpfad
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-try:
-    from dotenv import load_dotenv
-    load_dotenv(Path(__file__).parent.parent / ".env")
-except ImportError:
-    pass  # python-dotenv optional
+# Projekt-.env laden (aus dem aktuellen Arbeitsverzeichnis aufwärts),
+# damit Host/Port/DB konsistent aus der .env des Projekts kommen.
+from spider.config import load_project_env
+load_project_env()
 
 import uvicorn
 from spider.server.api import app  # noqa: F401 – App wird exportiert
