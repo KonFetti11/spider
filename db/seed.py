@@ -371,6 +371,10 @@ def seed(db: Database):
 if __name__ == "__main__":
     import os
 
+    # Projekt-.env laden, damit der Seed in die Projekt-DB schreibt (SPIDER_DB_PATH).
+    from spider.config import load_project_env
+    load_project_env()
+
     db_path = os.environ.get("SPIDER_DB_PATH", str(DEFAULT_DB_PATH))
     print(f"Datenbank: {db_path}")
 

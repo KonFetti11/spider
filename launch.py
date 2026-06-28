@@ -19,6 +19,8 @@ import os
 import socket
 from pathlib import Path
 
+from spider.config import load_project_env
+
 
 def find_free_port() -> int:
     """Vom Betriebssystem einen freien Port zuteilen lassen."""
@@ -29,10 +31,11 @@ def find_free_port() -> int:
 
 def main() -> int:
     project_dir = Path.cwd()
-    db_path = project_dir / ".spider" / "spider.db"
 
-    # Projekt-DB + Viz-Port für die Server-Prozessumgebung setzen.
-    os.environ["SPIDER_DB_PATH"] = str(db_path)
+    # Projekt-.env laden – SPIDER_DB_PATH (und ggf. Viz-Host/Port) kommen aus .spider/.env.
+    load_project_env(project_dir)
+    db_path = os.environ.get("SPIDER_DB_PATH", str(project_dir / ".spider" / "spider.db"))
+
     host = os.environ.get("SPIDER_VIZ_HOST", "127.0.0.1")
     port = int(os.environ.get("SPIDER_VIZ_PORT") or find_free_port())
     os.environ["SPIDER_VIZ_PORT"] = str(port)

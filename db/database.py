@@ -372,6 +372,9 @@ _db_instance: Optional[Database] = None
 def get_db() -> Database:
     global _db_instance
     if _db_instance is None:
+        # Projekt-.env laden, damit SPIDER_DB_PATH konsistent aus der .env kommt.
+        from spider.config import load_project_env
+        load_project_env()
         db_path = os.environ.get("SPIDER_DB_PATH", str(DEFAULT_DB_PATH))
         _db_instance = Database(Path(db_path))
     return _db_instance

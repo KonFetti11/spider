@@ -39,24 +39,22 @@ Verwendung (im Agent / in Skripten):
     spider.get_tree_stats()
     spider.create_node(name="...", reasoning="...", summary="...", issuer="...")
 
+Konfiguration kommt aus `.spider/.env` (SPIDER_DB_PATH, optional SPIDER_BASE_URL).
 Zugriffsmodus (Auto-Detect):
-  - Standard: Direkt-DB (schnell, tokenarm, kein Server nötig). Schreibt/liest
-    `<dieses Projekt>/.spider/spider.db`.
-  - Netzwerk: Ist die Umgebungsvariable SPIDER_BASE_URL gesetzt (z.B.
-    http://host:8765), wird stattdessen der laufende Spider-HTTP-Server genutzt.
-    Dieselbe Datenbank darunter – keine Migration nötig.
+  - Standard: Direkt-DB (schnell, tokenarm, kein Server nötig). Schreibt/liest die
+    in `.spider/.env` konfigurierte Projekt-DB (Standard: `.spider/spider.db`).
+  - Netzwerk: Ist SPIDER_BASE_URL gesetzt (in `.spider/.env` oder als Umgebungs-
+    variable), wird der laufende Spider-HTTP-Server genutzt. Dieselbe DB darunter.
 """
 
 import os
 import pathlib
 
-# Projekt-DB verbindlich festlegen, BEVOR das Spider-Package initialisiert wird.
-# Bewusst harte Zuweisung (kein setdefault): so nutzt dieses Projekt immer seine
-# eigene DB, selbst wenn global eine SPIDER_DB_PATH-Variable gesetzt ist.
-# (Im Netzwerkmodus via SPIDER_BASE_URL ist dieser Pfad ohnehin unbenutzt.)
-os.environ["SPIDER_DB_PATH"] = str(
-    pathlib.Path(__file__).resolve().parent / ".spider" / "spider.db"
-)
+# Projekt-.env laden (.spider/.env), verankert am Ort dieser Datei – unabhängig vom CWD.
+# Die .env ist autoritativ und setzt SPIDER_DB_PATH; eine globale Variable kann das
+# Projekt damit nicht mehr kapern.
+from spider.config import load_project_env
+load_project_env(pathlib.Path(__file__).resolve().parent)
 
 _base_url = os.environ.get("SPIDER_BASE_URL")
 if _base_url:
@@ -66,6 +64,20 @@ else:
     from spider.tools.local_tools import LocalSpiderTools
     spider = LocalSpiderTools()
 '''
+
+ENV_CONTENT = """# Spider-Konfiguration – erzeugt von spider-init.
+# Diese Datei ist die zentrale Konfigurationsquelle für dieses Projekt.
+
+# Pfad zur Projekt-Datenbank (relativ zur Projektwurzel, dem Verzeichnis mit .spider/).
+SPIDER_DB_PATH=.spider/spider.db
+
+# Optionaler Netzwerkzugriff statt Direkt-DB (Shim schaltet automatisch um):
+# SPIDER_BASE_URL=http://127.0.0.1:8765
+
+# Optionale feste Viz-Ports (sonst wird beim Start ein freier Port gewählt):
+# SPIDER_VIZ_HOST=127.0.0.1
+# SPIDER_VIZ_PORT=8766
+"""
 
 VIZ_PS1_CONTENT = """# Spider-Visualisierung starten – automatisch erzeugt von spider-init.
 # Waehlt einen freien Port und gibt die URL aus.
@@ -122,6 +134,12 @@ def copy_agents(project_dir: Path) -> str:
     return "AGENTS.md vorhanden – Spider-Block angehängt."
 
 
+def write_env(project_dir: Path) -> str:
+    if _write_if_absent(project_dir / ".spider" / ".env", ENV_CONTENT):
+        return ".spider/.env erstellt (zentrale Konfiguration)."
+    return ".spider/.env existiert bereits – unverändert."
+
+
 def write_shim(project_dir: Path) -> str:
     if _write_if_absent(project_dir / "spider_tools.py", SHIM_CONTENT):
         return "spider_tools.py erstellt."
@@ -172,6 +190,7 @@ def main(argv=None) -> int:
     (project_dir / ".spider").mkdir(exist_ok=True)
 
     results = [
+        write_env(project_dir),
         copy_agents(project_dir),
         write_shim(project_dir),
         write_viz_scripts(project_dir),
@@ -188,8 +207,8 @@ def main(argv=None) -> int:
     print("       spider.get_tree_stats()")
     print("  2) Visualisierung öffnen:")
     print("       ./spider-viz.ps1   (Windows)   bzw.   ./spider-viz.sh   (Linux/macOS)")
-    print("  3) Optional Netzwerkzugriff: Umgebungsvariable SPIDER_BASE_URL setzen")
-    print("     (z.B. http://127.0.0.1:8765) und `python -m spider.server.main` starten.")
+    print("  3) Konfiguration: .spider/.env (SPIDER_DB_PATH; optional SPIDER_BASE_URL")
+    print("     für Netzwerkzugriff via `python -m spider.server.main`).")
     return 0
 
 
