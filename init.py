@@ -45,6 +45,10 @@ Zugriffsmodus (Auto-Detect):
     in `.spider/.env` konfigurierte Projekt-DB (Standard: `.spider/spider.db`).
   - Netzwerk: Ist SPIDER_BASE_URL gesetzt (in `.spider/.env` oder als Umgebungs-
     variable), wird der laufende Spider-HTTP-Server genutzt. Dieselbe DB darunter.
+
+Zwei Handles:
+  - `spider`     – voller Zugriff (Lesen + Schreiben). Für den Orchestrator / die Planung.
+  - `spider_ro`  – read-only (Schreib-Methoden werfen). Für Subagents (`/spider-execute`).
 """
 
 import os
@@ -63,6 +67,10 @@ if _base_url:
 else:
     from spider.tools.local_tools import LocalSpiderTools
     spider = LocalSpiderTools()
+
+# Read-only Sicht für Subagents (Schreib-Methoden werfen ReadOnlyViolation).
+from spider.tools.local_tools import ReadOnlySpiderTools
+spider_ro = ReadOnlySpiderTools(spider)
 '''
 
 MCP_JSON_CONTENT = """{
@@ -107,9 +115,9 @@ exec python -m spider.launch
 # Hilfsfunktionen
 # ---------------------------------------------------------------------------
 
-def _read_template_agents() -> str:
-    """Liest templates/AGENTS.md aus dem installierten Spider-Package."""
-    return resources.files("spider").joinpath("templates/AGENTS.md").read_text(encoding="utf-8")
+def _read_template(relpath: str) -> str:
+    """Liest eine Datei aus dem templates/-Verzeichnis des installierten Spider-Packages."""
+    return resources.files("spider").joinpath(f"templates/{relpath}").read_text(encoding="utf-8")
 
 
 def _write_if_absent(path: Path, content: str) -> bool:
@@ -128,7 +136,7 @@ def copy_agents(project_dir: Path) -> str:
     - AGENTS.md vorhanden        → markierten Spider-Block anhängen (idempotent).
     Gibt eine kurze Statusmeldung zurück.
     """
-    template = _read_template_agents()
+    template = _read_template("AGENTS.md")
     agents_path = project_dir / "AGENTS.md"
 
     if not agents_path.exists():
@@ -160,6 +168,24 @@ def write_mcp_config(project_dir: Path) -> str:
     if _write_if_absent(project_dir / ".mcp.json", MCP_JSON_CONTENT):
         return ".mcp.json erstellt (MCP-Server für Claude Code & Co.)."
     return ".mcp.json existiert bereits – unverändert."
+
+
+def write_commands(project_dir: Path) -> str:
+    cmd_dir = project_dir / ".claude" / "commands"
+    cmd_dir.mkdir(parents=True, exist_ok=True)
+    written = []
+    for name in ("spider-plan.md", "spider-execute.md"):
+        if _write_if_absent(cmd_dir / name, _read_template(f"commands/{name}")):
+            written.append("/" + name[:-3])
+    if written:
+        return f"Slash-Commands erstellt: {', '.join(written)}."
+    return "Slash-Commands existieren bereits – unverändert."
+
+
+def write_work_agent(project_dir: Path) -> str:
+    if _write_if_absent(project_dir / ".spider" / "work_agent.md", _read_template("work_agent.md")):
+        return ".spider/work_agent.md erstellt (System-Prompt für read-only Subagents)."
+    return ".spider/work_agent.md existiert bereits – unverändert."
 
 
 def write_viz_scripts(project_dir: Path) -> str:
@@ -210,6 +236,8 @@ def main(argv=None) -> int:
         copy_agents(project_dir),
         write_shim(project_dir),
         write_mcp_config(project_dir),
+        write_commands(project_dir),
+        write_work_agent(project_dir),
         write_viz_scripts(project_dir),
     ]
 
@@ -225,9 +253,12 @@ def main(argv=None) -> int:
     print("  2) Alternativ ohne MCP – Tool per Python (kein Server nötig):")
     print("       from spider_tools import spider")
     print("       spider.get_tree_stats()")
-    print("  3) Visualisierung öffnen:")
+    print("  3) Slash-Commands in Claude Code:")
+    print("       /spider-plan     – Entscheidungsbaum aufbauen (Planungsphase)")
+    print("       /spider-execute  – Umsetzen via read-only Subagents (Ausführungsphase)")
+    print("  4) Visualisierung öffnen:")
     print("       ./spider-viz.ps1   (Windows)   bzw.   ./spider-viz.sh   (Linux/macOS)")
-    print("  4) Konfiguration: .spider/.env (SPIDER_DB_PATH; optional SPIDER_BASE_URL")
+    print("  5) Konfiguration: .spider/.env (SPIDER_DB_PATH; optional SPIDER_BASE_URL")
     print("     für Netzwerkzugriff via `python -m spider.server.main`).")
     return 0
 

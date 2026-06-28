@@ -180,3 +180,79 @@ class LocalSpiderTools:
             f"{stats['open_nodes']} offen | "
             f"Root-Reifegrad: {stats['root_reifegrad']:.3f}"
         )
+
+
+class ReadOnlyViolation(NotImplementedError):
+    """Wird geworfen, wenn ein read-only Tool eine schreibende Operation versucht."""
+
+
+class ReadOnlySpiderTools:
+    """
+    Read-only Sicht auf die Spider-Tools für **Subagents**.
+
+    Lese-Methoden werden an ein beliebiges Tools-Objekt delegiert
+    (`LocalSpiderTools` oder HTTP-`SpiderTools`); **alle schreibenden Methoden
+    werfen `ReadOnlyViolation`**. So kann ein Subagent den Entscheidungsbaum für
+    Kontext lesen, ihn aber technisch nicht verändern – nur der Orchestrator schreibt.
+
+    Verwendung:
+        ro = ReadOnlySpiderTools()                 # Direkt-DB, read-only
+        ro = ReadOnlySpiderTools(existing_tools)    # bestehendes Tools-Objekt absichern
+    """
+
+    #: Methoden, die in read-only-Modus gesperrt sind.
+    WRITE_METHODS = ("create_node", "update_node", "reject_node", "accept_node", "add_action")
+
+    def __init__(self, inner: Optional[object] = None):
+        self._inner = inner if inner is not None else LocalSpiderTools()
+
+    # --- erlaubte Lese-Operationen (Delegation) ---------------------------
+    def get_node(self, node_id: str) -> dict:
+        return self._inner.get_node(node_id)
+
+    def get_all_nodes(self, active_only: bool = False) -> list:
+        return self._inner.get_all_nodes(active_only)
+
+    def get_children(self, node_id: str) -> list:
+        return self._inner.get_children(node_id)
+
+    def get_tree(self) -> list:
+        return self._inner.get_tree()
+
+    def get_tree_nested(self) -> list:
+        return self._inner.get_tree_nested()
+
+    def get_tree_stats(self) -> dict:
+        return self._inner.get_tree_stats()
+
+    def get_actions(self, knoten_id: Optional[str] = None) -> list:
+        return self._inner.get_actions(knoten_id)
+
+    def is_server_running(self) -> bool:
+        return self._inner.is_server_running()
+
+    def get_planning_progress(self) -> str:
+        return self._inner.get_planning_progress()
+
+    # --- gesperrte Schreib-Operationen ------------------------------------
+    def _blocked(self, name: str):
+        raise ReadOnlyViolation(
+            f"'{name}' ist im read-only-Modus gesperrt. Subagents dürfen Spider nicht "
+            f"verändern – melde das gewünschte Ergebnis an den Orchestrator zurück, "
+            f"der die Datenbank aktualisiert."
+        )
+
+    def create_node(self, *args, **kwargs):
+        self._blocked("create_node")
+
+    def update_node(self, *args, **kwargs):
+        self._blocked("update_node")
+
+    def reject_node(self, *args, **kwargs):
+        self._blocked("reject_node")
+
+    def accept_node(self, *args, **kwargs):
+        self._blocked("accept_node")
+
+    def add_action(self, *args, **kwargs):
+        self._blocked("add_action")

@@ -36,4 +36,4 @@ packages = [
 spider = "."
 
 [tool.setuptools.package-data]
-spider = ["templates/*.md", "visualization/*.html"]
+spider = ["templates/*.md", "templates/commands/*.md", "visualization/*.html"]
