@@ -29,22 +29,21 @@ Root-Knoten (reifegrad = 0.0 → 1.0)
 ## Schnellstart
 
 ```bash
-# 1. Abhängigkeiten
-pip install -r spider/requirements.txt
+# 1. Installieren (editable, inkl. optionalem MCP-Server)
+pip install -e ".[mcp]"
 
-# 2. Testdaten
+# 2. Demo-Daten laden (in ./.spider/spider.db)
 python -m spider.db.seed
 
-# 3. API-Server starten (Port 8765)
+# 3. Visualisierung starten (wählt freien Port, gibt die URL aus)
+python -m spider.launch
+
+# Optional: HTTP-API – nur für Netzwerk-/Remote-Zugriff (Port 8765, Docs unter /docs)
 python -m spider.server.main
-
-# 4. Visualisierung starten (Port 8766)
-python -m spider.visualization.serve
-
-# 5. Browser öffnen
-#    Visualisierung: http://localhost:8766
-#    API-Docs:       http://localhost:8765/docs
 ```
+
+> Für die Einbindung in **eigene** Projekte nicht den obigen Demo-Flow nutzen, sondern
+> `spider-init` – siehe [Einbindung in ein neues Projekt](#einbindung-in-ein-neues-projekt).
 
 ---
 
@@ -175,14 +174,21 @@ spider-init /pfad/zum/projekt --force
 
 ---
 
-## Konfiguration (`.env`)
+## Konfiguration (`.spider/.env`)
+
+Pro Projekt liegt die Konfiguration in `.spider/.env` (von `spider-init` erzeugt, autoritativ
+geladen via `spider/config.py`). Ein relativer `SPIDER_DB_PATH` wird relativ zur Projektwurzel
+aufgelöst.
 
 ```env
-SPIDER_DB_PATH=data/spider.db
-SPIDER_HOST=127.0.0.1
-SPIDER_PORT=8765
-SPIDER_VIZ_HOST=127.0.0.1
-SPIDER_VIZ_PORT=8766
+SPIDER_DB_PATH=.spider/spider.db
+# Optionaler Netzwerk-/Remote-Zugriff (Shim/MCP schalten dann auf HTTP):
+# SPIDER_BASE_URL=http://127.0.0.1:8765
+# Optionale feste Ports (sonst wählt der Viz-Start einen freien Port):
+# SPIDER_HOST=127.0.0.1
+# SPIDER_PORT=8765
+# SPIDER_VIZ_HOST=127.0.0.1
+# SPIDER_VIZ_PORT=8766
 ```
 
 ---
