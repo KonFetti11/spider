@@ -12,8 +12,9 @@ Du arbeitest mit dem **Spider Traceability Framework**. Das bedeutet:
 **Du musst JEDEN Entscheidungsschritt und JEDE Alternative in der Spider-Datenbank
 dokumentieren – bevor du mit der Implementierung beginnst.**
 
-Spider stellt einen lokalen HTTP-Server bereit (`http://localhost:8765`), über den
-du den Planungsbaum verwaltest. Du hast Zugriff auf die folgenden Tools:
+Spider-Tools stehen als **native MCP-Tools** zur Verfügung (via `.mcp.json`, Direkt-DB,
+kein Server nötig) oder per Python (`from spider_tools import spider`). Du hast Zugriff
+auf die folgenden Tools:
 
 - `spider_create_node` – Neuen Entscheidungsknoten anlegen
 - `spider_get_node` – Einzelnen Knoten abrufen
@@ -158,17 +159,25 @@ vollständig sind, steigt der `reifegrad` des Elternknotens.
 
 ---
 
-## Server starten (falls nicht läuft)
+## Zugriff & Visualisierung
+
+Für die Tools ist **kein Server nötig** (Direkt-DB via MCP oder `spider_tools.py`).
 
 ```bash
-# Im spider/-Verzeichnis:
-python -m spider.server.main
-# → http://localhost:8765
+# Visualisierung des Baums (wählt freien Port, gibt URL aus):
+./spider-viz.ps1          # Windows   (bzw.  ./spider-viz.sh)
 
-# Visualisierung:
-python -m spider.visualization.serve
-# → http://localhost:8766
+# Nur für Netzwerk-/Remote-Zugriff: SPIDER_BASE_URL in .spider/.env setzen und
+python -m spider.server.main
 ```
+
+---
+
+## Zwei-Phasen-Workflow
+
+- `/spider-plan` – Planungsphase: Entscheidungsbaum aufbauen, bis `root.reifegrad == 1.0`.
+- `/spider-execute` – Ausführungsphase: Orchestrator mit exklusivem Schreibzugriff startet
+  read-only Subagents (`.spider/work_agent.md`), die zurückmelden; nur der Orchestrator schreibt.
 
 ---
 
@@ -216,8 +225,10 @@ stats = spider_get_tree_stats()
 
 ## Support & Dokumentation
 
-- API-Dokumentation: `http://localhost:8765/docs`
-- Visualisierung: `http://localhost:8766`
-- Framework-Code: `spider/` im Projektverzeichnis
-- Framework-AGENTS.md: `spider/AGENTS.md`
+- Konfiguration: `.spider/.env` (`SPIDER_DB_PATH`, optional `SPIDER_BASE_URL`)
+- Visualisierung: `./spider-viz.ps1` / `./spider-viz.sh` (Port wird beim Start ausgegeben)
+- MCP-Server: `.mcp.json` → `python -m spider.mcp_server`
+- Read-only Zugriff für Subagents: `from spider_tools import spider_ro`
+- Framework als Package installiert (`spider`); API-Docs nur bei laufendem
+  `python -m spider.server.main` unter `/docs`
 

@@ -99,12 +99,14 @@ spider/
 
 ### Schritt 1: Spider einmalig installieren
 ```bash
-# Lokal (Entwicklung), aus dem Spider-Repo:
-pip install -e .
+# Lokal (Entwicklung), aus dem Spider-Repo – inkl. MCP-Server:
+pip install -e ".[mcp]"
 
 # Später, nach GitHub-Publish:
-pip install git+https://github.com/<user>/spider.git
+pip install "spider[mcp] @ git+https://github.com/<user>/spider.git"
 ```
+Installiere in das Python, das deine Projekte nutzen (System-Python, oder das venv des Projekts).
+`[mcp]` ist optional – nur für den nativen MCP-Server nötig.
 
 ### Schritt 2: Projekt initialisieren
 Ein Befehl macht ein beliebiges Projekt Spider-fähig:
@@ -112,29 +114,51 @@ Ein Befehl macht ein beliebiges Projekt Spider-fähig:
 spider-init /pfad/zum/projekt        # oder: python -m spider.init /pfad/zum/projekt
 ```
 Das legt im Zielprojekt an:
-- `.spider/` – die projekteigene Datenbank (isoliert pro Projekt),
+- `.spider/.env` – zentrale Konfiguration (`SPIDER_DB_PATH`, optional `SPIDER_BASE_URL`),
+- `.spider/spider.db` – die projekteigene Datenbank (lazy, isoliert pro Projekt),
+- `.spider/work_agent.md` – System-Prompt für read-only Subagents,
 - `AGENTS.md` – Agent-Anweisungen (neu) bzw. ein angehängter, markierter Block,
-- `spider_tools.py` – Tool-Shim mit Auto-Detect,
+- `spider_tools.py` – Tool-Shim (exportiert `spider` und read-only `spider_ro`),
+- `.mcp.json` – MCP-Server-Konfiguration für Claude Code & Co.,
+- `.claude/commands/spider-plan.md` + `spider-execute.md` – Slash-Commands,
 - `spider-viz.ps1` / `spider-viz.sh` – Start-Helper für die Visualisierung.
 
-### Schritt 3: Tools im Agent nutzen (kein Server nötig)
-Der Shim greift standardmäßig **direkt** auf die Projekt-DB zu (schnell, tokenarm):
+### Schritt 3: Tools nutzen
+
+**a) Native MCP-Tools (empfohlen, z.B. Claude Code):** Beim Öffnen des Projekts findet der Client
+`.mcp.json` und startet `python -m spider.mcp_server` (Direkt-DB, kein Server). Verfügbare Tools:
+`spider_create_node`, `spider_get_tree`, `spider_get_tree_stats`, `spider_accept_node`,
+`spider_reject_node`, `spider_update_node`, `spider_add_action`, `spider_get_node`,
+`spider_get_children`, `spider_get_actions`. (Projekt-MCP-Server einmalig bestätigen.)
+
+**b) Per Python (kein Server nötig):**
 ```python
-from spider_tools import spider
+from spider_tools import spider       # voller Zugriff
 spider.get_tree_stats()
-spider.create_node(name="Datenbankauswahl", reasoning="...", summary="...", issuer="agent-001")
-```
-Für **Netzwerk-/Remote-Zugriff** (z.B. Claude Code vom Handy) Umgebungsvariable setzen –
-der Shim schaltet automatisch auf den HTTP-Client um, gleiche DB darunter:
-```bash
-export SPIDER_BASE_URL=http://<host>:8765
-python -m spider.server.main          # Server bereitstellen
+from spider_tools import spider_ro     # read-only (für Subagents; Schreib-Methoden werfen)
 ```
 
-### Schritt 4: Visualisierung öffnen
+**Netzwerk-/Remote-Zugriff** (z.B. Claude Code vom Handy): in `.spider/.env`
+`SPIDER_BASE_URL=http://<host>:8765` setzen und `python -m spider.server.main` starten –
+Shim/MCP nutzen dann HTTP, gleiche DB darunter, keine Migration.
+
+### Schritt 4: Zwei-Phasen-Workflow (Slash-Commands)
+- **`/spider-plan`** – Planungsphase: baut den Entscheidungsbaum auf, bis `root.reifegrad == 1.0`.
+- **`/spider-execute`** – Ausführungsphase: Orchestrator mit exklusivem Schreibzugriff startet
+  read-only Subagents (siehe `.spider/work_agent.md`), die Ergebnisse zurückmelden; nur der
+  Orchestrator schreibt sie nach Spider.
+
+### Schritt 5: Visualisierung öffnen
 ```bash
 ./spider-viz.ps1        # Windows   (bzw.  ./spider-viz.sh  unter Linux/macOS)
 # wählt automatisch einen freien Port und gibt die URL aus
+```
+
+### Bestehendes Projekt upgraden
+Nach einem Spider-Update die generierten Dateien im Projekt aktualisieren – Nutzerdaten
+(`.spider/.env`, `.spider/spider.db`) bleiben unangetastet:
+```bash
+spider-init /pfad/zum/projekt --force
 ```
 
 ---

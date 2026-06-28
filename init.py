@@ -120,12 +120,15 @@ def _read_template(relpath: str) -> str:
     return resources.files("spider").joinpath(f"templates/{relpath}").read_text(encoding="utf-8")
 
 
-def _write_if_absent(path: Path, content: str) -> bool:
-    """Schreibt content nur, wenn die Datei noch nicht existiert. Gibt True bei Schreibvorgang."""
-    if path.exists():
-        return False
+def _emit(path: Path, content: str, force: bool = False) -> str:
+    """Schreibt content. Existierende Dateien werden nur mit force=True überschrieben.
+    Gibt 'erstellt' | 'aktualisiert' | 'unverändert' zurück."""
+    existed = path.exists()
+    if existed and not force:
+        return "unverändert"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
-    return True
+    return "aktualisiert" if existed else "erstellt"
 
 
 def copy_agents(project_dir: Path) -> str:
@@ -138,70 +141,58 @@ def copy_agents(project_dir: Path) -> str:
     """
     template = _read_template("AGENTS.md")
     agents_path = project_dir / "AGENTS.md"
+    block = f"{SPIDER_BLOCK_START}\n{template}\n{SPIDER_BLOCK_END}\n"
 
     if not agents_path.exists():
-        agents_path.write_text(template, encoding="utf-8")
+        # Auch frisch mit Markern schreiben → erneute Läufe erkennen den Block (idempotent).
+        agents_path.write_text(block, encoding="utf-8")
         return "AGENTS.md erstellt."
 
     existing = agents_path.read_text(encoding="utf-8")
     if SPIDER_BLOCK_START in existing:
         return "AGENTS.md bereits Spider-fähig (Block vorhanden) – unverändert."
 
-    block = f"\n\n{SPIDER_BLOCK_START}\n{template}\n{SPIDER_BLOCK_END}\n"
-    agents_path.write_text(existing + block, encoding="utf-8")
+    agents_path.write_text(existing + "\n\n" + block, encoding="utf-8")
     return "AGENTS.md vorhanden – Spider-Block angehängt."
 
 
 def write_env(project_dir: Path) -> str:
-    if _write_if_absent(project_dir / ".spider" / ".env", ENV_CONTENT):
-        return ".spider/.env erstellt (zentrale Konfiguration)."
-    return ".spider/.env existiert bereits – unverändert."
+    # .env wird NIE überschrieben (enthält evtl. nutzerspezifische Konfiguration).
+    return f".spider/.env {_emit(project_dir / '.spider' / '.env', ENV_CONTENT)} (zentrale Konfiguration)."
 
 
-def write_shim(project_dir: Path) -> str:
-    if _write_if_absent(project_dir / "spider_tools.py", SHIM_CONTENT):
-        return "spider_tools.py erstellt."
-    return "spider_tools.py existiert bereits – unverändert."
+def write_shim(project_dir: Path, force: bool = False) -> str:
+    return f"spider_tools.py {_emit(project_dir / 'spider_tools.py', SHIM_CONTENT, force)}."
 
 
-def write_mcp_config(project_dir: Path) -> str:
-    if _write_if_absent(project_dir / ".mcp.json", MCP_JSON_CONTENT):
-        return ".mcp.json erstellt (MCP-Server für Claude Code & Co.)."
-    return ".mcp.json existiert bereits – unverändert."
+def write_mcp_config(project_dir: Path, force: bool = False) -> str:
+    return f".mcp.json {_emit(project_dir / '.mcp.json', MCP_JSON_CONTENT, force)} (MCP-Server)."
 
 
-def write_commands(project_dir: Path) -> str:
+def write_commands(project_dir: Path, force: bool = False) -> str:
     cmd_dir = project_dir / ".claude" / "commands"
-    cmd_dir.mkdir(parents=True, exist_ok=True)
-    written = []
+    parts = []
     for name in ("spider-plan.md", "spider-execute.md"):
-        if _write_if_absent(cmd_dir / name, _read_template(f"commands/{name}")):
-            written.append("/" + name[:-3])
-    if written:
-        return f"Slash-Commands erstellt: {', '.join(written)}."
-    return "Slash-Commands existieren bereits – unverändert."
+        status = _emit(cmd_dir / name, _read_template(f"commands/{name}"), force)
+        parts.append(f"/{name[:-3]} {status}")
+    return "Slash-Commands: " + ", ".join(parts) + "."
 
 
-def write_work_agent(project_dir: Path) -> str:
-    if _write_if_absent(project_dir / ".spider" / "work_agent.md", _read_template("work_agent.md")):
-        return ".spider/work_agent.md erstellt (System-Prompt für read-only Subagents)."
-    return ".spider/work_agent.md existiert bereits – unverändert."
+def write_work_agent(project_dir: Path, force: bool = False) -> str:
+    status = _emit(project_dir / ".spider" / "work_agent.md", _read_template("work_agent.md"), force)
+    return f".spider/work_agent.md {status} (Subagent-Prompt)."
 
 
-def write_viz_scripts(project_dir: Path) -> str:
-    msgs = []
-    if _write_if_absent(project_dir / "spider-viz.ps1", VIZ_PS1_CONTENT):
-        msgs.append("spider-viz.ps1")
+def write_viz_scripts(project_dir: Path, force: bool = False) -> str:
+    ps1 = _emit(project_dir / "spider-viz.ps1", VIZ_PS1_CONTENT, force)
     sh_path = project_dir / "spider-viz.sh"
-    if _write_if_absent(sh_path, VIZ_SH_CONTENT):
+    sh = _emit(sh_path, VIZ_SH_CONTENT, force)
+    if sh != "unverändert":
         try:
             sh_path.chmod(0o755)
         except OSError:
             pass
-        msgs.append("spider-viz.sh")
-    if msgs:
-        return f"Viz-Start-Helper erstellt: {', '.join(msgs)}."
-    return "Viz-Start-Helper existieren bereits – unverändert."
+    return f"Viz-Start-Helper: spider-viz.ps1 {ps1}, spider-viz.sh {sh}."
 
 
 # ---------------------------------------------------------------------------
@@ -219,6 +210,14 @@ def main(argv=None) -> int:
         default=".",
         help="Zielprojekt-Verzeichnis (Standard: aktuelles Verzeichnis).",
     )
+    parser.add_argument(
+        "-f", "--force", "--upgrade",
+        action="store_true",
+        dest="force",
+        help="Bestehendes Projekt upgraden: generierte Dateien (Shim, Commands, "
+             "work_agent.md, .mcp.json, Viz-Skripte) überschreiben. "
+             "Nutzerdaten (.spider/.env, .spider/spider.db) bleiben unangetastet.",
+    )
     args = parser.parse_args(argv)
 
     project_dir = Path(args.project_dir).expanduser().resolve()
@@ -234,14 +233,15 @@ def main(argv=None) -> int:
     results = [
         write_env(project_dir),
         copy_agents(project_dir),
-        write_shim(project_dir),
-        write_mcp_config(project_dir),
-        write_commands(project_dir),
-        write_work_agent(project_dir),
-        write_viz_scripts(project_dir),
+        write_shim(project_dir, args.force),
+        write_mcp_config(project_dir, args.force),
+        write_commands(project_dir, args.force),
+        write_work_agent(project_dir, args.force),
+        write_viz_scripts(project_dir, args.force),
     ]
 
-    print(f"\nSpider in Projekt initialisiert: {project_dir}")
+    verb = "aktualisiert (--force)" if args.force else "initialisiert"
+    print(f"\nSpider in Projekt {verb}: {project_dir}")
     print("  .spider/                  (eigene Datenbank, wird beim ersten Schreibzugriff angelegt)")
     for r in results:
         print(f"  {r}")

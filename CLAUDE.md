@@ -20,15 +20,25 @@ decisions are made. Every write produces an immutable `Action` audit-log entry.
 
 ## Commands
 
-Run all module commands from the **parent directory** of this repo (e.g. `PycharmProjects/`),
-because all imports are absolute (`from spider.db...`) and the repo is the `spider` package itself.
+The repo root **is** the `spider` package (imports are absolute, `from spider.db...`). Install it
+editable so `import spider` resolves from anywhere — this replaces the old "run from the parent
+directory" requirement:
 
 ```bash
-pip install -r spider/requirements.txt   # fastapi, uvicorn, pydantic, python-dotenv
-python -m spider.db.seed                  # load demo data into data/spider.db
-python -m spider.server.main              # API server, port 8765 (docs at /docs)
-python -m spider.visualization.serve      # viz server, port 8766
+pip install -e ".[mcp]"                   # editable install incl. optional MCP server
+python -m spider.db.seed                  # load demo data into .spider/spider.db
+python -m spider.server.main              # API server, port 8765 (only for network/HTTP mode)
+python -m spider.visualization.serve      # viz server (or: python -m spider.launch → free port)
 ```
+
+### Onboarding / per-project bootstrap (`init.py`, `launch.py`, `config.py`, `mcp_server.py`)
+`spider-init <projekt>` makes any project Spider-capable: generates `.spider/.env` (config),
+`AGENTS.md`, `spider_tools.py` shim (`spider` + read-only `spider_ro`), `.mcp.json`,
+`.claude/commands/spider-{plan,execute}.md`, `.spider/work_agent.md`, viz scripts.
+`spider-init <projekt> --force` upgrades the generated files (preserving `.env` + DB).
+Config comes from `.spider/.env` via `spider/config.py::load_project_env` (authoritative,
+`override=True`); all entry points funnel through it. Tools default to **direct-DB**
+(`LocalSpiderTools`, in-process over `server/api.py`); set `SPIDER_BASE_URL` to switch to HTTP.
 
 Tests: `test_poc.py` is a standalone end-to-end script (urllib, not pytest). It requires
 **both servers running and seed data loaded** — it hits the live HTTP API. Run with
