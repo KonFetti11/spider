@@ -97,43 +97,44 @@ spider/
 
 ## Einbindung in ein neues Projekt
 
-### Schritt 1: Spider bereitstellen
+### Schritt 1: Spider einmalig installieren
 ```bash
-# Option A: Direkt im Projekt-Repository (Submodule oder Kopie)
-cp -r spider/ /mein-projekt/spider/
+# Lokal (Entwicklung), aus dem Spider-Repo:
+pip install -e .
 
-# Option B: Als Python-Package (nach Setup-Erstellung)
-pip install spider-traceability
+# Später, nach GitHub-Publish:
+pip install git+https://github.com/<user>/spider.git
 ```
 
-### Schritt 2: AGENTS.md ins Zielprojekt kopieren
+### Schritt 2: Projekt initialisieren
+Ein Befehl macht ein beliebiges Projekt Spider-fähig:
 ```bash
-cp spider/templates/AGENTS.md /mein-projekt/AGENTS.md
-# oder für Claude:
-cp spider/templates/AGENTS.md /mein-projekt/CLAUDE.md
+spider-init /pfad/zum/projekt        # oder: python -m spider.init /pfad/zum/projekt
 ```
+Das legt im Zielprojekt an:
+- `.spider/` – die projekteigene Datenbank (isoliert pro Projekt),
+- `AGENTS.md` – Agent-Anweisungen (neu) bzw. ein angehängter, markierter Block,
+- `spider_tools.py` – Tool-Shim mit Auto-Detect,
+- `spider-viz.ps1` / `spider-viz.sh` – Start-Helper für die Visualisierung.
 
-### Schritt 3: Spider-Server starten
-```bash
-# Einmalig zu Beginn des Projekts
-python -m spider.server.main &
-python -m spider.visualization.serve &
-```
-
-### Schritt 4: Tools in Agent-System einbinden
+### Schritt 3: Tools im Agent nutzen (kein Server nötig)
+Der Shim greift standardmäßig **direkt** auf die Projekt-DB zu (schnell, tokenarm):
 ```python
-# Für OpenAI function-calling:
-from spider.tools.tool_schemas import get_openai_tools
-tools = get_openai_tools()
+from spider_tools import spider
+spider.get_tree_stats()
+spider.create_node(name="Datenbankauswahl", reasoning="...", summary="...", issuer="agent-001")
+```
+Für **Netzwerk-/Remote-Zugriff** (z.B. Claude Code vom Handy) Umgebungsvariable setzen –
+der Shim schaltet automatisch auf den HTTP-Client um, gleiche DB darunter:
+```bash
+export SPIDER_BASE_URL=http://<host>:8765
+python -m spider.server.main          # Server bereitstellen
+```
 
-# Für Anthropic/Claude:
-from spider.tools.tool_schemas import get_anthropic_tools
-tools = get_anthropic_tools()
-
-# Direkter Aufruf (ohne function-calling):
-from spider.tools.agent_tools import SpiderTools
-spider = SpiderTools()
-stats = spider.get_planning_progress()
+### Schritt 4: Visualisierung öffnen
+```bash
+./spider-viz.ps1        # Windows   (bzw.  ./spider-viz.sh  unter Linux/macOS)
+# wählt automatisch einen freien Port und gibt die URL aus
 ```
 
 ---
