@@ -14,6 +14,10 @@ dependencies = [
     "python-dotenv>=1.0.0",
 ]
 
+[project.optional-dependencies]
+# Für den nativen MCP-Server (Claude Code & andere MCP-Clients): pip install -e ".[mcp]"
+mcp = ["mcp>=1.2.0"]
+
 [project.scripts]
 spider-init = "spider.init:main"
 

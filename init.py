@@ -65,6 +65,16 @@ else:
     spider = LocalSpiderTools()
 '''
 
+MCP_JSON_CONTENT = """{
+  "mcpServers": {
+    "spider": {
+      "command": "python",
+      "args": ["-m", "spider.mcp_server"]
+    }
+  }
+}
+"""
+
 ENV_CONTENT = """# Spider-Konfiguration – erzeugt von spider-init.
 # Diese Datei ist die zentrale Konfigurationsquelle für dieses Projekt.
 
@@ -146,6 +156,12 @@ def write_shim(project_dir: Path) -> str:
     return "spider_tools.py existiert bereits – unverändert."
 
 
+def write_mcp_config(project_dir: Path) -> str:
+    if _write_if_absent(project_dir / ".mcp.json", MCP_JSON_CONTENT):
+        return ".mcp.json erstellt (MCP-Server für Claude Code & Co.)."
+    return ".mcp.json existiert bereits – unverändert."
+
+
 def write_viz_scripts(project_dir: Path) -> str:
     msgs = []
     if _write_if_absent(project_dir / "spider-viz.ps1", VIZ_PS1_CONTENT):
@@ -193,6 +209,7 @@ def main(argv=None) -> int:
         write_env(project_dir),
         copy_agents(project_dir),
         write_shim(project_dir),
+        write_mcp_config(project_dir),
         write_viz_scripts(project_dir),
     ]
 
@@ -202,12 +219,15 @@ def main(argv=None) -> int:
         print(f"  {r}")
 
     print("\nNächste Schritte:")
-    print("  1) Spider als Tool nutzen (kein Server nötig):")
+    print("  1) Native MCP-Tools (Claude Code u.a.): MCP-SDK installieren")
+    print('       pip install "spider[mcp]"   (bzw. im Repo:  pip install -e ".[mcp]")')
+    print("     .mcp.json ist erzeugt; Claude Code beim Projektöffnen den Server bestätigen.")
+    print("  2) Alternativ ohne MCP – Tool per Python (kein Server nötig):")
     print("       from spider_tools import spider")
     print("       spider.get_tree_stats()")
-    print("  2) Visualisierung öffnen:")
+    print("  3) Visualisierung öffnen:")
     print("       ./spider-viz.ps1   (Windows)   bzw.   ./spider-viz.sh   (Linux/macOS)")
-    print("  3) Konfiguration: .spider/.env (SPIDER_DB_PATH; optional SPIDER_BASE_URL")
+    print("  4) Konfiguration: .spider/.env (SPIDER_DB_PATH; optional SPIDER_BASE_URL")
     print("     für Netzwerkzugriff via `python -m spider.server.main`).")
     return 0
 
