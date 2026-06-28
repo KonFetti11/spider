@@ -253,8 +253,7 @@
 // ============================================================
 const API_URL = '/api/tree';
 const NODE_R  = 20;       // Basis-Radius
-const H_GAP   = 220;      // Horizontaler Abstand zwischen Ebenen
-const V_GAP   = 70;       // Vertikaler Abstand zwischen Knoten
+const RADIUS  = 300;      // Radialer Abstand Root → äußerste Ebene
 
 let showInactive = true;
 let allNodes = [];
@@ -298,6 +297,14 @@ function buildHierarchy(nodes, showInact) {
            confidence: 0, reifegrad: 0, children: roots, _synthetic: true };
 }
 
+// Polar → Kartesisch (Winkel in Radiant, 0 = oben)
+function radialPoint(angle, radius) {
+  return [
+    radius * Math.cos(angle - Math.PI / 2),
+    radius * Math.sin(angle - Math.PI / 2)
+  ];
+}
+
 // ============================================================
 // Render
 // ============================================================
@@ -315,7 +322,9 @@ function render(nodes) {
 
   // D3 Hierarchy
   const hierarchy = d3.hierarchy(root, d => d.children && d.children.length ? d.children : null);
-  const treeLayout = d3.tree().nodeSize([V_GAP, H_GAP]);
+  const treeLayout = d3.tree()
+    .size([2 * Math.PI, RADIUS])
+    .separation((a, b) => (a.parent === b.parent ? 1 : 2) / a.depth);
   treeLayout(hierarchy);
 
   const allDesc = hierarchy.descendants();
@@ -326,9 +335,9 @@ function render(nodes) {
     .data(allLinks)
     .join('path')
     .attr('class', d => d.target.data.active ? 'link-active' : 'link-inactive')
-    .attr('d', d3.linkHorizontal()
-      .x(d => d.y)
-      .y(d => d.x)
+    .attr('d', d3.linkRadial()
+      .angle(d => d.x)
+      .radius(d => d.y)
     );
 
   // ── Nodes ───────────────────────────────────────────────────
@@ -336,7 +345,10 @@ function render(nodes) {
     .data(allDesc)
     .join('g')
     .attr('class', 'node')
-    .attr('transform', d => `translate(${d.y},${d.x})`);
+    .attr('transform', d => {
+      const [px, py] = radialPoint(d.x, d.y);
+      return `translate(${px.toFixed(2)},${py.toFixed(2)})`;
+    });
 
   // Ring-Hintergrund (reifegrad)
   nodeGroups.append('circle')
@@ -381,8 +393,20 @@ function render(nodes) {
 
   // Knoten-Name
   nodeGroups.append('text')
-    .attr('dy', d => d.children ? -NODE_R - 8 : NODE_R + 14)
-    .attr('text-anchor', 'middle')
+    .attr('transform', d => {
+      if (d.depth === 0) return null;
+      const angle = d.x - Math.PI / 2;
+      const dx = (NODE_R + 8) * Math.cos(angle);
+      const dy = (NODE_R + 8) * Math.sin(angle);
+      return `translate(${dx.toFixed(2)},${dy.toFixed(2)})`;
+    })
+    .attr('dy', d => d.depth === 0 ? -(NODE_R + 12) : '0.35em')
+    .attr('text-anchor', d => {
+      if (d.depth === 0) return 'middle';
+      const cosA = Math.cos(d.x - Math.PI / 2);
+      if (Math.abs(cosA) < 0.15) return 'middle';
+      return cosA > 0 ? 'start' : 'end';
+    })
     .attr('fill', d => d.data.active ? '#e2e8f0' : '#4a5568')
     .attr('font-size', '11px')
     .attr('font-weight', d => d.data.status === 'accepted' ? '600' : '400')
@@ -402,22 +426,17 @@ function render(nodes) {
 
   svg.call(zoom);
 
-  // Initial zentrieren
-  const svgEl   = document.getElementById('tree-svg');
+  // Initial zentrieren (radial: Origin auf SVG-Mittelpunkt)
+  const svgEl = document.getElementById('tree-svg');
   const W = svgEl.clientWidth, H = svgEl.clientHeight;
-  const xs = allDesc.map(d => d.y), ys = allDesc.map(d => d.x);
-  const minX = Math.min(...xs), maxX = Math.max(...xs);
-  const minY = Math.min(...ys), maxY = Math.max(...ys);
-  const treeW = maxX - minX + NODE_R * 4;
-  const treeH = maxY - minY + NODE_R * 4;
-  const scale = Math.min(0.85, W / treeW, H / treeH);
-  const tx = W / 2 - scale * (minX + treeW / 2);
-  const ty = H / 2 - scale * (minY + treeH / 2);
+  const maxR = d3.max(allDesc, d => d.y) || RADIUS;
+  const pad  = NODE_R * 6;
+  const scale = Math.min(0.95, (Math.min(W, H) / 2 - pad) / maxR);
 
   if (rootTransform) {
     svg.call(zoom.transform, rootTransform);
   } else {
-    const t = d3.zoomIdentity.translate(tx, ty).scale(scale);
+    const t = d3.zoomIdentity.translate(W / 2, H / 2).scale(scale);
     svg.call(zoom.transform, t);
     rootTransform = t;
   }
