@@ -61,6 +61,14 @@ SPIDER_TOOL_SCHEMAS: List[dict] = [
                 "synonyms": {
                     "type": "string",
                     "description": "Kommagetrennte alternative Bezeichnungen (optional)"
+                },
+                "task_ref": {
+                    "type": "string",
+                    "description": "Link/Pfad zur Datei mit der Aufgabenstellung (optional)"
+                },
+                "task_markdown": {
+                    "type": "string",
+                    "description": "Aufgabenstellung als Markdown-Inhalt, direkt im Knoten (optional)"
                 }
             },
             "required": ["name", "reasoning", "summary", "issuer"]
@@ -164,7 +172,9 @@ SPIDER_TOOL_SCHEMAS: List[dict] = [
                     "enum": ["open", "in_progress", "accepted", "rejected"],
                     "description": "Neuer Status (optional)"
                 },
-                "synonyms": {"type": "string", "description": "Neue Synonyme (optional)"}
+                "synonyms": {"type": "string", "description": "Neue Synonyme (optional)"},
+                "task_ref": {"type": "string", "description": "Neuer Link/Pfad zur Aufgabenstellungs-Datei (optional)"},
+                "task_markdown": {"type": "string", "description": "Neue Aufgabenstellung als Markdown-Inhalt (optional)"}
             },
             "required": ["node_id", "issuer", "reason"]
         }

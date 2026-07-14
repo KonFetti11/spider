@@ -44,9 +44,18 @@ CREATE TABLE IF NOT EXISTS nodes (
     status          TEXT NOT NULL DEFAULT 'open',
     name            TEXT NOT NULL DEFAULT '',
     synonyms        TEXT NOT NULL DEFAULT '',
+    taskRef         TEXT NOT NULL DEFAULT '',
+    taskMarkdown    TEXT NOT NULL DEFAULT '',
     lastChange      INTEGER NOT NULL
 );
 """
+
+# Spalten, die nachträglich zu bestehenden nodes-Tabellen hinzugefügt wurden.
+# _init_schema migriert ältere Projekt-DBs beim Öffnen per ALTER TABLE (idempotent).
+SCHEMA_NODES_MIGRATIONS = {
+    "taskRef": "ALTER TABLE nodes ADD COLUMN taskRef TEXT NOT NULL DEFAULT ''",
+    "taskMarkdown": "ALTER TABLE nodes ADD COLUMN taskMarkdown TEXT NOT NULL DEFAULT ''",
+}
 
 SCHEMA_ACTIONS = """
 CREATE TABLE IF NOT EXISTS actions (
@@ -89,6 +98,10 @@ class Database:
         with self._conn() as conn:
             conn.execute(SCHEMA_NODES)
             conn.execute(SCHEMA_ACTIONS)
+            existing_cols = {row["name"] for row in conn.execute("PRAGMA table_info(nodes)")}
+            for col, ddl in SCHEMA_NODES_MIGRATIONS.items():
+                if col not in existing_cols:
+                    conn.execute(ddl)
 
     # -----------------------------------------------------------------------
     # Hilfsmethoden
@@ -186,15 +199,17 @@ class Database:
                 """INSERT INTO nodes
                    (id, parentId, active, reasoning, summary, creationDate,
                     rejectionDate, rejectionReason, acceptionDate, acceptionReason,
-                    issuer, confidence, reifegrad, status, name, synonyms, lastChange)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    issuer, confidence, reifegrad, status, name, synonyms,
+                    taskRef, taskMarkdown, lastChange)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     node.id, node.parentId, int(node.active),
                     node.reasoning, node.summary, node.creationDate,
                     node.rejectionDate, node.rejectionReason,
                     node.acceptionDate, node.acceptionReason,
                     node.issuer, node.confidence, node.reifegrad,
-                    node.status, node.name, node.synonyms, node.lastChange,
+                    node.status, node.name, node.synonyms,
+                    node.taskRef, node.taskMarkdown, node.lastChange,
                 ),
             )
             self._recalculate_ancestors(node.id, conn)

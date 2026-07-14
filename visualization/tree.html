@@ -490,8 +490,10 @@ function showTooltip(event, d) {
     ${n.rejectionReason? `<div class="tt-row"><span class="tt-key">Abl.-Grund</span><span class="tt-val" style="color:#fc8181">${n.rejectionReason}</span></div>` : ''}
     ${n.acceptionReason? `<div class="tt-row"><span class="tt-key">Akz.-Grund</span><span class="tt-val" style="color:#9ae6b4">${n.acceptionReason}</span></div>` : ''}
     ${n.synonyms       ? `<div class="tt-row"><span class="tt-key">Synonyme</span><span class="tt-val" style="color:#718096">${n.synonyms}</span></div>` : ''}
+    ${n.taskRef        ? `<div class="tt-row"><span class="tt-key">Aufgabe</span><span class="tt-val">${n.taskRef}</span></div>` : ''}
     ${n.summary        ? `<div class="tt-reasoning">${n.summary}</div>` : ''}
     ${n.reasoning      ? `<div class="tt-reasoning" style="color:#718096">${n.reasoning}</div>` : ''}
+    ${n.taskMarkdown   ? `<div class="tt-reasoning" style="color:#718096">${n.taskMarkdown}</div>` : ''}
   `;
   tooltip.style.display = 'block';
   moveTooltip(event);

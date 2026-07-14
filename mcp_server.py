@@ -40,12 +40,16 @@ def spider_create_node(
     parent_id: Optional[str] = None,
     status: str = "open",
     synonyms: str = "",
+    task_ref: str = "",
+    task_markdown: str = "",
 ) -> dict:
     """Erstellt einen neuen Entscheidungsknoten im Planungsbaum (mit Auto-Audit-Eintrag).
-    parent_id=None => Root-Knoten. Für jede Entscheidung/Alternative aufrufen."""
+    parent_id=None => Root-Knoten. Für jede Entscheidung/Alternative aufrufen.
+    task_ref/task_markdown: Link zur Aufgabenstellungs-Datei bzw. Aufgabenstellung als Markdown-Inhalt."""
     return _tools.create_node(
         name=name, reasoning=reasoning, summary=summary, issuer=issuer,
         parent_id=parent_id, status=status, synonyms=synonyms,
+        task_ref=task_ref, task_markdown=task_markdown,
     )
 
 
@@ -71,12 +75,15 @@ def spider_update_node(
     summary: Optional[str] = None,
     status: Optional[str] = None,
     synonyms: Optional[str] = None,
+    task_ref: Optional[str] = None,
+    task_markdown: Optional[str] = None,
 ) -> dict:
     """Aktualisiert Felder eines Knotens. `reason` ist Pflicht (Audit-Log).
     confidence/reifegrad werden automatisch berechnet, nie direkt gesetzt."""
     return _tools.update_node(
         node_id, issuer=issuer, reason=reason, name=name, reasoning=reasoning,
         summary=summary, status=status, synonyms=synonyms,
+        task_ref=task_ref, task_markdown=task_markdown,
     )
 
 

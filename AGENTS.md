@@ -133,6 +133,8 @@ class Node:
     acceptionReason: Optional[str]
     synonyms: str = ""
     status: str = "open"             # open|accepted|rejected|in_progress
+    taskRef: str = ""                # Link/Pfad zur Aufgabenstellungs-Datei
+    taskMarkdown: str = ""           # Aufgabenstellung als Markdown-Inhalt
 
     # Berechnete Felder (READ-ONLY, niemals direkt setzen)
     confidence: float = 0.0          # 0.0–1.0

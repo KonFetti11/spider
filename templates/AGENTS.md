@@ -147,6 +147,8 @@ vollständig sind, steigt der `reifegrad` des Elternknotens.
 | `summary`  | ✓       | Was beschreibt dieser Knoten in 1–2 Sätzen? |
 | `issuer`   | ✓       | Deine Agent-ID (z.B. `claude-agent-1`) |
 | `parent_id`| ✓*      | Referenz auf Elternknoten (*außer Root) |
+| `task_ref` |         | Link/Pfad zur Datei mit der Aufgabenstellung (optional) |
+| `task_markdown` |    | Aufgabenstellung als Markdown-Inhalt, direkt im Knoten (optional) |
 
 ---
 

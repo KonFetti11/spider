@@ -91,18 +91,22 @@ class SpiderTools:
         parent_id: Optional[str] = None,
         status: str = "open",
         synonyms: str = "",
+        task_ref: str = "",
+        task_markdown: str = "",
     ) -> dict:
         """
         Erstellt einen neuen Entscheidungsknoten im Planungsbaum.
 
         Args:
-            name:      Anzeigename des Knotens (kurz und präzise)
-            reasoning: Warum wird dieser Knoten erstellt? Welche Entscheidung steht an?
-            summary:   Kurze Zusammenfassung des Knoteninhalt
-            issuer:    Identifikation des Erstellers (Agent-Name oder User-ID)
-            parent_id: ID des übergeordneten Knotens (None = Root-Knoten)
-            status:    Initialer Status: 'open' | 'in_progress'
-            synonyms:  Kommagetrennte alternative Bezeichnungen
+            name:          Anzeigename des Knotens (kurz und präzise)
+            reasoning:     Warum wird dieser Knoten erstellt? Welche Entscheidung steht an?
+            summary:       Kurze Zusammenfassung des Knoteninhalt
+            issuer:        Identifikation des Erstellers (Agent-Name oder User-ID)
+            parent_id:     ID des übergeordneten Knotens (None = Root-Knoten)
+            status:        Initialer Status: 'open' | 'in_progress'
+            synonyms:      Kommagetrennte alternative Bezeichnungen
+            task_ref:      Link/Pfad zur Datei mit der Aufgabenstellung (optional)
+            task_markdown: Aufgabenstellung als Markdown-Inhalt, direkt im Knoten (optional)
 
         Returns:
             dict: Der erstellte Node als Dictionary
@@ -119,6 +123,8 @@ class SpiderTools:
             "issuer": issuer,
             "status": status,
             "synonyms": synonyms,
+            "taskRef": task_ref,
+            "taskMarkdown": task_markdown,
         }
         if parent_id:
             payload["parentId"] = parent_id
@@ -171,19 +177,23 @@ class SpiderTools:
         summary: Optional[str] = None,
         status: Optional[str] = None,
         synonyms: Optional[str] = None,
+        task_ref: Optional[str] = None,
+        task_markdown: Optional[str] = None,
     ) -> dict:
         """
         Aktualisiert Felder eines bestehenden Knotens.
 
         Args:
-            node_id:   ID des zu aktualisierenden Knotens
-            issuer:    Wer nimmt die Änderung vor?
-            reason:    Warum wird die Änderung vorgenommen? (Pflichtfeld)
-            name:      Neuer Anzeigename (optional)
-            reasoning: Neue Begründung (optional)
-            summary:   Neue Zusammenfassung (optional)
-            status:    Neuer Status (optional)
-            synonyms:  Neue Synonyme (optional)
+            node_id:       ID des zu aktualisierenden Knotens
+            issuer:        Wer nimmt die Änderung vor?
+            reason:        Warum wird die Änderung vorgenommen? (Pflichtfeld)
+            name:          Neuer Anzeigename (optional)
+            reasoning:     Neue Begründung (optional)
+            summary:       Neue Zusammenfassung (optional)
+            status:        Neuer Status (optional)
+            synonyms:      Neue Synonyme (optional)
+            task_ref:      Neuer Link/Pfad zur Aufgabenstellungs-Datei (optional)
+            task_markdown: Neue Aufgabenstellung als Markdown-Inhalt (optional)
 
         Returns:
             dict: Aktualisierter Node
@@ -199,6 +209,10 @@ class SpiderTools:
             payload["status"] = status
         if synonyms is not None:
             payload["synonyms"] = synonyms
+        if task_ref is not None:
+            payload["taskRef"] = task_ref
+        if task_markdown is not None:
+            payload["taskMarkdown"] = task_markdown
         return self._patch(f"/nodes/{node_id}", payload)
 
     def reject_node(self, node_id: str, issuer: str, reason: str) -> dict:

@@ -150,6 +150,8 @@ def create_node(body: NodeCreate):
         issuer=body.issuer,
         status=body.status,
         synonyms=body.synonyms,
+        taskRef=body.taskRef,
+        taskMarkdown=body.taskMarkdown,
         creationDate=ts,
         lastChange=ts,
     )

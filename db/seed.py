@@ -47,6 +47,8 @@ def seed(db: Database):
         issuer="system",
         status="in_progress",
         synonyms="root, hauptknoten",
+        taskRef="docs/aufgabenstellung.md",
+        taskMarkdown="## Aufgabe\nSpider-POC: nachvollziehbare Entscheidungsbäume für AI-Agenten bauen.",
         lastChange=_ts(100),
     )
 

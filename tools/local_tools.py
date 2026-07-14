@@ -65,6 +65,8 @@ class LocalSpiderTools:
         parent_id: Optional[str] = None,
         status: str = "open",
         synonyms: str = "",
+        task_ref: str = "",
+        task_markdown: str = "",
     ) -> dict:
         """Erstellt einen neuen Entscheidungsknoten (inkl. automatischem Audit-Log-Eintrag)."""
         return _wrap(api.create_node, NodeCreate(
@@ -75,6 +77,8 @@ class LocalSpiderTools:
             parentId=parent_id,
             status=status,
             synonyms=synonyms,
+            taskRef=task_ref,
+            taskMarkdown=task_markdown,
         ))
 
     def get_node(self, node_id: str) -> dict:
@@ -99,6 +103,8 @@ class LocalSpiderTools:
         summary: Optional[str] = None,
         status: Optional[str] = None,
         synonyms: Optional[str] = None,
+        task_ref: Optional[str] = None,
+        task_markdown: Optional[str] = None,
     ) -> dict:
         """Aktualisiert Felder eines bestehenden Knotens (confidence/reifegrad werden nicht gesetzt)."""
         body = NodeUpdate(
@@ -109,6 +115,8 @@ class LocalSpiderTools:
             summary=summary,
             status=status,
             synonyms=synonyms,
+            taskRef=task_ref,
+            taskMarkdown=task_markdown,
         )
         return _wrap(api.update_node, node_id, body)
 

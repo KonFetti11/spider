@@ -57,6 +57,8 @@ class Node:
         status          – Aktueller Status: 'open' | 'accepted' | 'rejected' | 'in_progress'
         name            – Anzeigename des Knotens
         synonyms        – Kommagetrennte Synonyme/alternative Bezeichnungen
+        taskRef         – Link/Pfad zur Datei mit der Aufgabenstellung (optional)
+        taskMarkdown    – Aufgabenstellung als Markdown-Inhalt, direkt im Knoten (optional)
         lastChange      – Letzter Änderungszeitpunkt (Unix ms)
     """
     id: str
@@ -75,6 +77,8 @@ class Node:
     acceptionReason: Optional[str] = None
     synonyms: str = ""
     status: str = "open"                 # open | accepted | rejected | in_progress
+    taskRef: str = ""                    # Link/Pfad zur Aufgabenstellungs-Datei
+    taskMarkdown: str = ""                # Aufgabenstellung als Markdown-Inhalt
 
     # Berechnete Felder (werden automatisch aus der DB-Logik gesetzt)
     confidence: float = 0.0             # 0.0 für neue Knoten; Durchschnitt der Children

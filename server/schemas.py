@@ -27,6 +27,8 @@ class NodeCreate(BaseModel):
     status: str = "open"
     synonyms: str = ""
     active: bool = True
+    taskRef: str = ""
+    taskMarkdown: str = ""
 
 
 class NodeUpdate(BaseModel):
@@ -38,6 +40,8 @@ class NodeUpdate(BaseModel):
     status: Optional[str] = None
     synonyms: Optional[str] = None
     active: Optional[bool] = None
+    taskRef: Optional[str] = None
+    taskMarkdown: Optional[str] = None
     reason: str = Field(..., description="Begründung der Änderung (Pflichtfeld für Audit-Log)")
 
 
@@ -71,6 +75,8 @@ class NodeResponse(BaseModel):
     status: str
     name: str
     synonyms: str
+    taskRef: str
+    taskMarkdown: str
     lastChange: int
 
     class Config:
