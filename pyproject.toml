@@ -3,8 +3,8 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "spider"
-version = "1.1"
+name = "konfetti-spider"
+version = "1.2"
 description = "POC-Framework zur Nachvollziehbarkeit von AI-Agent-Entscheidungen (Planungsbaum + Audit-Log)."
 readme = "README.md"
 requires-python = ">=3.10"
