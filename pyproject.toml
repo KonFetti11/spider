@@ -4,9 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spider"
-version = "0.1.0"
+version = "1.0"
 description = "POC-Framework zur Nachvollziehbarkeit von AI-Agent-Entscheidungen (Planungsbaum + Audit-Log)."
+readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
 dependencies = [
     "fastapi>=0.110.0",
     "uvicorn[standard]>=0.29.0",
@@ -14,9 +24,18 @@ dependencies = [
     "python-dotenv>=1.0.0",
 ]
 
+authors = [
+    { name = "David Natzkin" , email="david.natzkin+spider@gmail.com" }
+]
+
+[project.urls]
+Repository = "https://github.com/KonFetti11/spider"
+
 [project.optional-dependencies]
 # Für den nativen MCP-Server (Claude Code & andere MCP-Clients): pip install -e ".[mcp]"
 mcp = ["mcp>=1.2.0"]
+# Für Unittests: pip install -e ".[test]"
+test = ["pytest>=8.0", "httpx>=0.27"]
 
 [project.scripts]
 spider-init = "spider.init:main"

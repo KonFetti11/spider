@@ -11,6 +11,11 @@ projects as agent usage instructions, not guidance for this repo.
 
 Most prose in this repo is German; keep new docstrings/comments consistent with surrounding code.
 
+**Maintenance rule**: whenever a change is structural (new top-level directory, changed
+package layout, new CI/CD workflow, new required tool/command, changed architecture
+invariant) — update this file (`CLAUDE.md`) as part of that change, not as an afterthought.
+Stale docs here are worse than no docs.
+
 ## What this is
 
 Spider is a POC framework for AI-agent decision traceability. An agent builds a persistent
@@ -40,10 +45,27 @@ Config comes from `.spider/.env` via `spider/config.py::load_project_env` (autho
 `override=True`); all entry points funnel through it. Tools default to **direct-DB**
 (`LocalSpiderTools`, in-process over `server/api.py`); set `SPIDER_BASE_URL` to switch to HTTP.
 
-Tests: `test_poc.py` is a standalone end-to-end script (urllib, not pytest). It requires
-**both servers running and seed data loaded** — it hits the live HTTP API. Run with
-`python spider/test_poc.py`. There is no configured linter or unit-test suite; the 7 checks
-in `test_poc.py` are the acceptance criteria.
+### Tests
+
+Two layers, don't confuse them:
+- `tests/` — real pytest unit/API suite, isolated (tmp SQLite per test, no live server).
+  Run with `pip install -e ".[mcp,test]"` then `pytest tests/`. This is what CI runs.
+- `test_poc.py` — standalone end-to-end script (urllib, not pytest). Requires **both servers
+  running and seed data loaded** — hits the live HTTP API. Run manually with
+  `python spider/test_poc.py`; not part of CI. The 7 checks there are a live smoke test, not
+  a substitute for `tests/`.
+
+There is no configured linter.
+
+### CI/CD
+
+`.github/workflows/ci.yml` runs `pytest tests/` on every push/PR (Python 3.10–3.12 matrix).
+`.github/workflows/release.yml` runs on push to `main` when `pyproject.toml` changes: runs
+CI, compares the `pyproject.toml` version against what's already published on PyPI, and if
+it's new, builds and publishes via PyPI Trusted Publishing (OIDC — no stored token). Bumping
+the version in `pyproject.toml` is what triggers a release; pushing without a version bump
+is a no-op. Requires a one-time Trusted Publisher registration on pypi.org for this repo
+before the first automated release works.
 
 ## Architecture invariants
 
@@ -71,3 +93,9 @@ These constraints span multiple files and are easy to violate:
 `tools/` agent-facing HTTP wrappers (`SpiderTools` + function-calling JSON schemas;
 **stdlib `urllib` only**, no external HTTP deps) → `visualization/` D3.js tree viewer.
 The dependency direction is db ← server ← tools/viz (over HTTP).
+
+`tests/` pytest suite (see above). `.github/workflows/` CI + release automation. `LICENSE`
+(MIT). None of these ship inside the `spider` package on PyPI — only `spider.*` (and
+`templates/*`, `visualization/*.html` as package-data) are included; `packages` in
+`pyproject.toml` is an explicit list, not auto-discovery, so this stays true even though
+`tests/` physically sits next to the package root.

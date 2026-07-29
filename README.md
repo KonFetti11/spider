@@ -23,6 +23,8 @@ Root-Knoten (reifegrad = 0.0 → 1.0)
 - **reifegrad = 1.0** am Root = Alle Entscheidungen getroffen → Planungsphase abgeschlossen
 - Jede Entscheidung (accept/reject) wird mit Begründung dokumentiert
 - Alle Änderungen erzeugen automatisch einen unveränderlichen **Audit-Log (Actions)**
+- Optional lässt sich an jedem Knoten die zugehörige Aufgabenstellung verlinken
+  (`taskRef` – Pfad/Link) oder direkt einbetten (`taskMarkdown` – Markdown-Inhalt)
 
 ---
 

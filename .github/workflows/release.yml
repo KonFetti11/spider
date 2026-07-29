@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths: ["pyproject.toml"]
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # PyPI Trusted Publishing (OIDC) – kein API-Token nötig
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Version aus pyproject.toml lesen
+        id: local_version
+        run: |
+          VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Bereits auf PyPI veröffentlichte Versionen abfragen
+        id: pypi_check
+        env:
+          LOCAL_VERSION: ${{ steps.local_version.outputs.version }}
+        run: |
+          python - <<'EOF'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+
+          try:
+              with urllib.request.urlopen("https://pypi.org/pypi/spider/json") as r:
+                  data = json.load(r)
+              published = set(data.get("releases", {}).keys())
+          except urllib.error.HTTPError as e:
+              if e.code == 404:
+                  published = set()
+              else:
+                  raise
+
+          version = os.environ["LOCAL_VERSION"]
+          already_published = version in published
+          print(f"Version {version} bereits auf PyPI: {already_published}")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"already_published={str(already_published).lower()}\n")
+          EOF
+
+      - name: Build (sdist + wheel)
+        if: steps.pypi_check.outputs.already_published != 'true'
+        run: |
+          pip install build
+          python -m build
+
+      - name: Publish to PyPI
+        if: steps.pypi_check.outputs.already_published != 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Kein neues Release nötig
+        if: steps.pypi_check.outputs.already_published == 'true'
+        run: echo "Version ${{ steps.local_version.outputs.version }} ist bereits auf PyPI – kein Release."
