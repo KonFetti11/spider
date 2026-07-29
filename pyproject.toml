@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spider"
-version = "1.0"
+version = "1.1"
 description = "POC-Framework zur Nachvollziehbarkeit von AI-Agent-Entscheidungen (Planungsbaum + Audit-Log)."
 readme = "README.md"
 requires-python = ">=3.10"
